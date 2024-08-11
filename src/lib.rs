@@ -13,6 +13,7 @@ use crate::{
 
 pub mod interpolation;
 pub mod prediction;
+pub mod bevy_types;
 
 pub struct SnapshotInterpolationPlugin {
     /// Should reflect the server max tick rate
