@@ -210,7 +210,7 @@ impl SimpleBoxPlugin {
     }
 
     /// Reads player inputs and sends [`MoveCommandEvents`]
-    fn input_system(mut move_events: EventWriter<MoveDirection>, input: Res<ButtonInput<KeyCode>>) {
+    fn input_system(mut move_events: EventWriter<MoveDirection>, input: Res<ButtonInput<KeyCode>>, time: Res<Time>) {
         let mut direction = Vec2::ZERO;
         if input.pressed(KeyCode::ArrowRight) {
             direction.x += 1.0;
@@ -225,7 +225,10 @@ impl SimpleBoxPlugin {
             direction.y -= 1.0;
         }
         if direction != Vec2::ZERO {
-            move_events.send(MoveDirection(direction.normalize_or_zero()));
+            move_events.send(MoveDirection {
+                direction: direction.normalize_or_zero(),
+                delta_time: time.delta_seconds(),
+            });
         }
     }
 }
@@ -239,10 +242,10 @@ impl Predict<MoveDirection, MovementSystemContext> for PlayerPosition {
     fn apply_event(
         &mut self,
         event: &MoveDirection,
-        delta_time: f32,
+        _delta_time: f32,
         context: &MovementSystemContext,
     ) {
-        self.0 += event.0 * delta_time * context.move_speed;
+        self.0 += event.direction * event.delta_time * context.move_speed;
     }
 }
 
@@ -302,4 +305,4 @@ struct PlayerColor(Color);
 
 /// A movement event for the controlled box.
 #[derive(Debug, Default, Deserialize, Event, Serialize, Clone)]
-struct MoveDirection(Vec2);
+struct MoveDirection{direction: Vec2, delta_time: f32}
