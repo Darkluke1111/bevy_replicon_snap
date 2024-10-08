@@ -45,13 +45,13 @@ impl Plugin for SnapshotInterpolationPlugin {
             .replicate::<Interpolated>()
             .replicate::<NetworkOwner>()
             .replicate::<OwnerPredicted>()
-            .configure_sets(PreUpdate, InterpolationSet::Init.after(ClientSet::Receive))
+            .configure_sets(FixedPreUpdate, InterpolationSet::Init.after(ClientSet::Receive))
             .configure_sets(
-                PreUpdate,
+                FixedPreUpdate,
                 InterpolationSet::Interpolate.after(InterpolationSet::Init),
             )
             .add_systems(
-                Update,
+                FixedUpdate,
                 owner_prediction_init_system
                     .run_if(client_connected)
                     .in_set(InterpolationSet::Init),

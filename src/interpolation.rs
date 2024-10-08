@@ -1,7 +1,7 @@
 use std::{collections::VecDeque, io::Cursor};
 
 use bevy::{
-    app::{App, PreUpdate},
+    app::{App, FixedFirst, FixedPreUpdate, PreUpdate},
     ecs::{
         component::Component,
         entity::Entity,
@@ -165,13 +165,13 @@ impl AppInterpolationExt for App {
         T: Component + Interpolate + Clone + Serialize + DeserializeOwned,
     {
         self.add_systems(
-            PreUpdate,
+            FixedPreUpdate,
             (snapshot_buffer_init_system::<T>.after(owner_prediction_init_system))
                 .in_set(InterpolationSet::Init)
                 .run_if(client_connected),
         );
         self.add_systems(
-            PreUpdate,
+            FixedPreUpdate,
             (
                 snapshot_interpolation_system::<T>,
                 predicted_snapshot_system::<T>,

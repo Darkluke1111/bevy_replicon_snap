@@ -1,5 +1,5 @@
 use bevy::{
-    app::{App, Update},
+    app::{App, FixedUpdate, Update},
     ecs::{
         component::Component,
         entity::Entity,
@@ -200,7 +200,7 @@ impl AppPredictionExt for App {
         C: Component + Predict<E, T> + Clone,
     {
         self.add_systems(
-            Update,
+            FixedUpdate,
             (
                 server_update_system::<E, T, C>.run_if(has_authority), // Runs only on the server or a single player.
                 predicted_update_system::<E, T, C>.run_if(client_connected), // Runs only on clients.
