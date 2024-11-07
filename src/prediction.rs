@@ -3,7 +3,7 @@ use bevy::{
         component::Component,
         entity::Entity,
         event::{Event, EventReader},
-        query::{Added, With, Without},
+        query::{Added, QueryIter, With, Without},
         schedule::IntoSystemConfigs,
         system::{Commands, Query, Res, ResMut, Resource},
     }, prelude::World, reflect::Reflect, time::Time
@@ -32,8 +32,9 @@ use crate::{
 pub trait Predict<E: Event, T>
 where
     Self: Component + Interpolate,
+    T: Component,
 {
-    fn apply_event(&mut self, event: &E, delta_time: f32, context: &T, world: &World);
+    fn apply_event(&mut self, event: &E, delta_time: f32, context: &mut QueryIter<&T,()>);
 }
 
 pub struct EventSnapshot<T: Event> {
@@ -114,14 +115,14 @@ pub fn server_update_system<
     C: Component + Interpolate + Predict<E, T> + Clone,
 >(
     time: Res<Time>,
-    world: &World,
     mut move_events: EventReader<FromClient<E>>,
-    mut subjects: Query<(&NetworkOwner, &mut C, &T), Without<Predicted>>,
+    mut subjects: Query<(&NetworkOwner, &mut C), Without<Predicted>>,
+    mut context: Query<&T>,
 ) {
     for FromClient { client_id, event } in move_events.read() {
-        for (player, mut component, context) in &mut subjects {
+        for (player, mut component) in &mut subjects {
             if client_id.get() == player.0 {
-                component.apply_event(event, time.delta_seconds(), context, world);
+                component.apply_event(event, time.delta_seconds(), &mut context.iter_mut());
             }
         }
     }
@@ -134,16 +135,17 @@ pub fn predicted_update_system<
     C: Component + Interpolate + Predict<E, T> + Clone
 >(
     mut q_predicted_players: Query<
-        (&mut C, &SnapshotBuffer<C>, &ConfirmHistory, &T),
+        (&mut C, &SnapshotBuffer<C>, &ConfirmHistory),
         (With<Predicted>, Without<Interpolated>),
     >,
+    mut context: Query<&T>,
     world: &World,
     mut local_events: EventReader<E>,
     mut event_history: ResMut<PredictedEventHistory<E>>,
     time: Res<Time>,
 ) {
     // Apply all pending inputs to latest snapshot
-    for (mut component, snapshot_buffer, confirmed, context) in q_predicted_players.iter_mut() {
+    for (mut component, snapshot_buffer, confirmed) in q_predicted_players.iter_mut() {
         // Append the latest input event
         for event in local_events.read() {
             event_history.insert(
@@ -158,8 +160,7 @@ pub fn predicted_update_system<
             corrected_component.apply_event(
                 &event_snapshot.value,
                 event_snapshot.delta_time,
-                context,
-                world,
+                &mut context.iter_mut(),
             );
         }
         *component = corrected_component;

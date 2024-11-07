@@ -8,7 +8,7 @@ use std::{
     time::SystemTime,
 };
 
-use bevy::{prelude::*, winit::UpdateMode::Continuous, winit::WinitSettings};
+use bevy::{ecs::query::QueryIter, prelude::*, winit::{UpdateMode::Continuous, WinitSettings}};
 use bevy_replicon::prelude::*;
 use bevy_replicon_renet::{
     renet::{
@@ -243,10 +243,9 @@ impl Predict<MoveDirection, MovementSystemContext> for PlayerPosition {
         &mut self,
         event: &MoveDirection,
         _delta_time: f32,
-        context: &MovementSystemContext,
-        world: &World
+        static_context: &mut QueryIter<&MovementSystemContext,()>
     ) {
-        self.0 += event.direction * event.delta_time * context.move_speed;
+        self.0 += event.direction * event.delta_time * static_context.next().unwrap().move_speed;
     }
 }
 
