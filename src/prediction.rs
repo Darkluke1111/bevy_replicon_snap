@@ -1,15 +1,12 @@
 use bevy::{
-    app::{App, Update},
-    ecs::{
+    app::{App, Update}, ecs::{
         component::Component,
         entity::Entity,
         event::{Event, EventReader},
         query::{Added, With, Without},
         schedule::IntoSystemConfigs,
         system::{Commands, Query, Res, ResMut, Resource},
-    },
-    reflect::Reflect,
-    time::Time,
+    }, prelude::World, reflect::Reflect, time::Time
 };
 use bevy_replicon::{
     client::confirm_history::ConfirmHistory,
@@ -36,7 +33,7 @@ pub trait Predict<E: Event, T>
 where
     Self: Component + Interpolate,
 {
-    fn apply_event(&mut self, event: &E, delta_time: f32, context: &T);
+    fn apply_event(&mut self, event: &E, delta_time: f32, context: &T, world: &World);
 }
 
 pub struct EventSnapshot<T: Event> {
@@ -117,13 +114,14 @@ pub fn server_update_system<
     C: Component + Interpolate + Predict<E, T> + Clone,
 >(
     time: Res<Time>,
+    world: &World,
     mut move_events: EventReader<FromClient<E>>,
     mut subjects: Query<(&NetworkOwner, &mut C, &T), Without<Predicted>>,
 ) {
     for FromClient { client_id, event } in move_events.read() {
         for (player, mut component, context) in &mut subjects {
             if client_id.get() == player.0 {
-                component.apply_event(event, time.delta_seconds(), context);
+                component.apply_event(event, time.delta_seconds(), context, world);
             }
         }
     }
@@ -133,12 +131,13 @@ pub fn server_update_system<
 pub fn predicted_update_system<
     E: Event + Clone,
     T: Component,
-    C: Component + Interpolate + Predict<E, T> + Clone,
+    C: Component + Interpolate + Predict<E, T> + Clone
 >(
     mut q_predicted_players: Query<
         (&mut C, &SnapshotBuffer<C>, &ConfirmHistory, &T),
         (With<Predicted>, Without<Interpolated>),
     >,
+    world: &World,
     mut local_events: EventReader<E>,
     mut event_history: ResMut<PredictedEventHistory<E>>,
     time: Res<Time>,
@@ -160,6 +159,7 @@ pub fn predicted_update_system<
                 &event_snapshot.value,
                 event_snapshot.delta_time,
                 context,
+                world,
             );
         }
         *component = corrected_component;

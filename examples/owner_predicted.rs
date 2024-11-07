@@ -244,6 +244,7 @@ impl Predict<MoveDirection, MovementSystemContext> for PlayerPosition {
         event: &MoveDirection,
         _delta_time: f32,
         context: &MovementSystemContext,
+        world: &World
     ) {
         self.0 += event.direction * event.delta_time * context.move_speed;
     }
